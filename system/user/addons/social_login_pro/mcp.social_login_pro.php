@@ -27,19 +27,19 @@ require_once PATH_THIRD.'social_login_pro/config.php';
 class Social_login_pro_mcp {
 
     var $version = SOCIAL_LOGIN_PRO_ADDON_VERSION;
-    
+
     var $settings = array();
-    
+
     var $docs_url = "http://www.intoeetive.com/docs/social_login_pro.html";
-    
-    function __construct() { 
-        // Make a local reference to the ExpressionEngine super object 
-        $this->EE =& get_instance(); 
+
+    function __construct() {
+        // Make a local reference to the ExpressionEngine super object
+        $this->EE =& get_instance();
         $query = $this->EE->db->query("SELECT settings FROM exp_modules WHERE module_name='Social_login_pro' LIMIT 1");
-        $this->settings = unserialize($query->row('settings')); 
+        $this->settings = unserialize($query->row('settings'));
         $this->EE->lang->loadfile('shorteen');
         $this->EE->lang->loadfile('social_login_pro');
-        
+
         if (version_compare(APP_VER, '2.6.0', '>='))
         {
         	$this->EE->view->cp_page_title = lang('social_login_pro_module_name');
@@ -48,37 +48,37 @@ class Social_login_pro_mcp {
         {
         	$this->EE->cp->set_variable('cp_page_title', lang('social_login_pro_module_name'));
         }
-    } 
-    
+    }
+
     function index()
     {
         $this->EE->load->helper('form');
-    	$this->EE->load->library('table');  
+    	$this->EE->load->library('table');
         $this->EE->load->library('javascript');
-        
+
         $providers_view = '';
         $providers = array();
-        
+
         foreach(scandir(PATH_THIRD.'social_login_pro/libraries/') as $file) {
-            if (is_file(PATH_THIRD.'social_login_pro/libraries/'.$file)) 
+            if (is_file(PATH_THIRD.'social_login_pro/libraries/'.$file))
             {
                 $providers[] = str_replace("_oauth.php", "", $file);
             }
         }
-        
+
         $outputjs = "
-            $(\".editAccordion\").css(\"borderTop\", $(\".editAccordion\").css(\"borderBottom\")); 
+            $(\".editAccordion\").css(\"borderTop\", $(\".editAccordion\").css(\"borderBottom\"));
             $(\".editAccordion h3\").click(function() {
-                if ($(this).hasClass(\"collapsed\")) { 
-                    $(this).siblings().slideDown(\"fast\"); 
-                    $(this).removeClass(\"collapsed\").parent().removeClass(\"collapsed\"); 
-                } else { 
-                    $(this).siblings().slideUp(\"fast\"); 
-                    $(this).addClass(\"collapsed\").parent().addClass(\"collapsed\"); 
+                if ($(this).hasClass(\"collapsed\")) {
+                    $(this).siblings().slideDown(\"fast\");
+                    $(this).removeClass(\"collapsed\").parent().removeClass(\"collapsed\");
+                } else {
+                    $(this).siblings().slideUp(\"fast\");
+                    $(this).addClass(\"collapsed\").parent().addClass(\"collapsed\");
                 }
-            }); 
+            });
         ";
-        
+
         $custom_fields = array();
         $custom_fields[''] = '';
         $this->EE->db->select('m_field_id, m_field_label');
@@ -87,16 +87,16 @@ class Social_login_pro_mcp {
         foreach ($q->result() as $obj)
         {
             $custom_fields[$obj->m_field_id] = $obj->m_field_label;
-        }        
-        
+        }
+
         foreach ($providers as $provider)
         {
             $data['empty'] = (isset($this->settings[$this->EE->config->item('site_id')][$provider]['app_id']) && $this->settings[$this->EE->config->item('site_id')][$provider]['app_id']!='')?false:true;
             $data['name'] = lang($provider);
             $data['docs_url'] = $this->docs_url."#".$provider;
             $data['app_register_url'] = lang($provider.'_app_register_url');
-            
-            $data['fields'] = array(	
+
+            $data['fields'] = array(
                 0 => array(
                         'label'=>lang($provider.'_app_id'),
                         'subtext'=>lang($provider.'_app_id_subtext'),
@@ -121,7 +121,7 @@ class Social_login_pro_mcp {
                         'field'=>form_checkbox("enable_posts[$provider]", 'y', (isset($this->settings[$this->EE->config->item('site_id')][$provider]['enable_posts']) && $this->settings[$this->EE->config->item('site_id')][$provider]['enable_posts']=='n')?false:true)
                     );
             }
-      		
+
             if (in_array($provider, array('twitter', 'instagram', 'appdotnet')))
             {
                 $data['fields'][4] = array(
@@ -132,40 +132,33 @@ class Social_login_pro_mcp {
             }
             $providers_view .= $this->EE->load->view('provider', $data, TRUE);
         }
-        
+
         $vars = array();
         $vars['providers'] = $providers_view;
-        
-        if ($this->EE->config->item('path_third_themes')!='')
-        {
-            $theme_folder_path = $this->EE->config->slash_item('path_third_themes').'social_login/';
-        }
-        else
-        {
-            $theme_folder_path = $this->EE->config->slash_item('theme_folder_path').'third_party/social_login/';
-        }
-        
+
+        $theme_folder_path = PATH_THIRD_THEMES.'/social_login/';
+
         $icon_sets = array();
         foreach(scandir($theme_folder_path) as $dir) {
-            if (substr($dir, 0, 1)!='.' && is_dir($theme_folder_path.$dir)) 
+            if (substr($dir, 0, 1)!='.' && is_dir($theme_folder_path.$dir))
             {
                 $icon_sets[$dir] = $dir;
             }
         }
-        
+
         $act = $this->EE->db->query("SELECT action_id FROM exp_actions WHERE class='Social_login_pro' AND method='request_token'");
         $vars['settings']['act_value']	= $act->row('action_id');
-        
+
         $act = $this->EE->db->query("SELECT action_id FROM exp_actions WHERE class='Social_login_pro' AND method='access_token'");
         $access_token_url = trim($this->EE->config->item('site_url'), '/').'/?ACT='.$act->row('action_id');
         $vars['settings']['callback_uri']	= $access_token_url;
-        
+
         $act = $this->EE->db->query("SELECT action_id FROM exp_actions WHERE class='Social_login_pro' AND method='access_token_loggedin'");
         $access_token_url = trim($this->EE->config->item('site_url'), '/').'/?ACT='.$act->row('action_id');
         $vars['settings']['callback_uri_loggedin']	= $access_token_url;
-        
+
         $vars['settings']['prevent_duplicate_assoc'] = form_checkbox('prevent_duplicate_assoc', 'y', (isset($this->settings[$this->EE->config->item('site_id')]['prevent_duplicate_assoc'])?$this->settings[$this->EE->config->item('site_id')]['prevent_duplicate_assoc']:false));
-        
+
         $member_groups = array();
         $this->EE->db->select('group_id, group_title');
         $this->EE->db->where('group_id NOT IN (1,2,4)');
@@ -175,14 +168,14 @@ class Social_login_pro_mcp {
             $member_groups[$obj->group_id] = $obj->group_title;
         }
         $vars['settings']['member_group']	= form_dropdown('member_group', $member_groups, (isset($this->settings[$this->EE->config->item('site_id')]['member_group'])?$this->settings[$this->EE->config->item('site_id')]['member_group']:''));
-        
+
         $vars['settings']['force_pending_if_no_email']	= form_checkbox('force_pending_if_no_email', 'y', (isset($this->settings[$this->EE->config->item('site_id')]['force_pending_if_no_email'])?$this->settings[$this->EE->config->item('site_id')]['force_pending_if_no_email']:false));
-        
+
         $vars['settings']['email_is_username']	= form_checkbox('email_is_username', 'y', (isset($this->settings[$this->EE->config->item('site_id')]['email_is_username'])?$this->settings[$this->EE->config->item('site_id')]['email_is_username']:false));
-        
+
         $this->EE->load->model('status_model');
         $query = $this->EE->status_model->get_statuses();
-		
+
 		$statuses = array();
 		$statuses['open'] = lang('open');
 		$statuses['closed'] = lang('closed');
@@ -195,7 +188,7 @@ class Social_login_pro_mcp {
 				$statuses[$row->status] = $status_name;
 			}
 		}
-		
+
 		$selected_statuses = (isset($this->settings[$this->EE->config->item('site_id')]['trigger_statuses'])?$this->settings[$this->EE->config->item('site_id')]['trigger_statuses']:array('open'));
 
 		$vars['settings']['trigger_statuses']	= '';
@@ -203,9 +196,9 @@ class Social_login_pro_mcp {
 		{
 			$vars['settings']['trigger_statuses'] .= form_checkbox('trigger_statuses[]', $status, in_array($status, $selected_statuses)).NBS.NBS.$lang.BR.BR;
 		}
-        
+
         $vars['settings']['icon_set']	= form_dropdown('icon_set', $icon_sets, (isset($this->settings[$this->EE->config->item('site_id')]['icon_set'])?$this->settings[$this->EE->config->item('site_id')]['icon_set']:'bar'));
-        
+
         $url_shortening_services = array(
                                     'googl'=>lang('googl'),
                                     'isgd'=>lang('isgd'),
@@ -214,16 +207,16 @@ class Social_login_pro_mcp {
                                     'lessn-more'=>lang('lessn-more'),
                                     'cloud-app'=>lang('cloud-app')
                                 );
-        
+
         $vars['settings']['url_shortening_service']	= form_dropdown('url_shortening_service', $url_shortening_services, (isset($this->settings[$this->EE->config->item('site_id')]['url_shortening_service'])?$this->settings[$this->EE->config->item('site_id')]['url_shortening_service']:'googl'));
-        
+
         $act = $this->EE->db->query("SELECT action_id FROM exp_actions WHERE class='Shorteen' AND method='process'");
         $shotren_url = trim($this->EE->config->item('site_url'), '/').'/?ACT='.$act->row('action_id');
-        
+
         $shorteen_settings_q = $this->EE->db->select('settings')->from('modules')->where('module_name', 'Shorteen')->limit(1)->get();
         $shorteen_settings = unserialize($shorteen_settings_q->row('settings'));
         $secret = (isset($shorteen_settings['shorteen_secret']))?$shorteen_settings['shorteen_secret']:'';
-        
+
         $outputjs .= "
             ts = new Date();
             $('.shortening_reveal').click(function(){
@@ -250,35 +243,35 @@ class Social_login_pro_mcp {
                                     '<div id="shorturl" style="width: 10em"></div>',
                                     '<a href="#" class="submit" id="test_shortening">'.lang('test_shortening').'</a>'
         );
-        
+
         $vars['settings']['custom_profile_fields']	= '';
         $vars['settings']['full_name']	= form_dropdown('full_name', $custom_fields, (isset($this->settings[$this->EE->config->item('site_id')]['full_name'])?$this->settings[$this->EE->config->item('site_id')]['full_name']:''));
         $vars['settings']['first_name']	= form_dropdown('first_name', $custom_fields, (isset($this->settings[$this->EE->config->item('site_id')]['first_name'])?$this->settings[$this->EE->config->item('site_id')]['first_name']:''));
         $vars['settings']['last_name']	= form_dropdown('last_name', $custom_fields, (isset($this->settings[$this->EE->config->item('site_id')]['last_name'])?$this->settings[$this->EE->config->item('site_id')]['last_name']:''));
         $vars['settings']['gender']	= form_dropdown('gender', $custom_fields, (isset($this->settings[$this->EE->config->item('site_id')]['gender'])?$this->settings[$this->EE->config->item('site_id')]['gender']:''));
-        
-        
+
+
         $this->EE->javascript->output(str_replace(array("\n", "\t"), '', $outputjs));
-        
+
     	return $this->EE->load->view('settings', $vars, TRUE);
-        
+
     }
 
-    
+
     function save_settings()
     {
 
-        $this->EE->load->library('table');  
-        
+        $this->EE->load->library('table');
+
         $site_id = $this->EE->config->item('site_id');
-        
+
         foreach(scandir(PATH_THIRD.'social_login_pro/libraries/') as $file) {
-            if (is_file(PATH_THIRD.'social_login_pro/libraries/'.$file)) 
+            if (is_file(PATH_THIRD.'social_login_pro/libraries/'.$file))
             {
                 $providers[] = str_replace("_oauth.php", "", $file);
             }
         }
-        
+
         $settings = array();
         $this->EE->db->select('site_id')
                     ->from('sites');
@@ -293,7 +286,7 @@ class Social_login_pro_mcp {
                 }
             }
         }
-        
+
         $custom_field_used = array();
 
         foreach ($providers as $provider)
@@ -306,27 +299,27 @@ class Social_login_pro_mcp {
                 $settings[$site_id][$provider]['follow_username'] = $_POST["follow_username"]["$provider"];
             }
             $settings[$site_id][$provider]['enable_posts'] = (isset($_POST["enable_posts"]["$provider"]) && $_POST["enable_posts"]["$provider"]=='y')?'y':'n';
-            
+
             if ( ($settings[$site_id][$provider]['app_id']!=''||$settings[$site_id][$provider]['app_secret']!=''||$settings[$site_id][$provider]['custom_field']!='') )
             {
                 $custom_field_used[] = $_POST["custom_field"]["$provider"];
             }
             if ( ($settings[$site_id][$provider]['app_id']!=''||$settings[$site_id][$provider]['app_secret']!=''||$settings[$site_id][$provider]['custom_field']!='') && ($settings[$site_id][$provider]['app_id']==''||$settings[$site_id][$provider]['app_secret']==''||$settings[$site_id][$provider]['custom_field']=='') )
             {
-                $this->EE->session->set_flashdata('message_failure', $this->EE->lang->line('provide_all_settings_for').' '.$this->EE->lang->line($provider));    
+                $this->EE->session->set_flashdata('message_failure', $this->EE->lang->line('provide_all_settings_for').' '.$this->EE->lang->line($provider));
                 $this->EE->functions->redirect(BASE.AMP.'C=addons_modules'.AMP.'M=show_module_cp'.AMP.'module=social_login_pro');
-                return;  
+                return;
             }
         }
-        
-        $custom_field_used_uniq = array_unique($custom_field_used); 
-        if(count($custom_field_used_uniq) != count($custom_field_used)) 
+
+        $custom_field_used_uniq = array_unique($custom_field_used);
+        if(count($custom_field_used_uniq) != count($custom_field_used))
         {
-            $this->EE->session->set_flashdata('message_failure', $this->EE->lang->line('cannot_use_duplicate_custom_fields'));    
+            $this->EE->session->set_flashdata('message_failure', $this->EE->lang->line('cannot_use_duplicate_custom_fields'));
             $this->EE->functions->redirect(BASE.AMP.'C=addons_modules'.AMP.'M=show_module_cp'.AMP.'module=social_login_pro');
-            return;    
+            return;
         }
-        
+
         $settings[$site_id]['member_group'] = $_POST["member_group"];
         $settings[$site_id]['full_name'] = $_POST["full_name"];
         $settings[$site_id]['first_name'] = $_POST["first_name"];
@@ -338,26 +331,26 @@ class Social_login_pro_mcp {
         $settings[$site_id]['prevent_duplicate_assoc'] = (isset($_POST["prevent_duplicate_assoc"])&&$_POST["prevent_duplicate_assoc"]=='y')?true:false;
         $settings[$site_id]['force_pending_if_no_email'] = (isset($_POST["force_pending_if_no_email"])&&$_POST["force_pending_if_no_email"]=='y')?true:false;
         $settings[$site_id]['email_is_username'] = (isset($_POST["email_is_username"])&&$_POST["email_is_username"]=='y')?true:false;
-        
+
         $this->EE->db->where('module_name', 'Social_login_pro');
         $this->EE->db->update('modules', array('settings' => serialize($settings)));
-        
-        $this->EE->session->set_flashdata('message_success', $this->EE->lang->line('preferences_updated'));  
-        $this->EE->functions->redirect(BASE.AMP.'C=addons_modules'.AMP.'M=show_module_cp'.AMP.'module=social_login_pro'.AMP.'method=index');      
-        
-    }    
-    
-    
-    
+
+        $this->EE->session->set_flashdata('message_success', $this->EE->lang->line('preferences_updated'));
+        $this->EE->functions->redirect(BASE.AMP.'C=addons_modules'.AMP.'M=show_module_cp'.AMP.'module=social_login_pro'.AMP.'method=index');
+
+    }
+
+
+
     function templates()
     {
     	$site_id = $this->EE->config->item('site_id');
-        
+
         $this->EE->load->helper('form');
     	$this->EE->load->library('table');
 
     	$vars = array();
-                              
+
         $tmpls = array('entry_submission_absolute_end', 'insert_comment_end', 'forum_submit_post_end', 'member_member_register');
         foreach ($tmpls as $tmpl)
         {
@@ -379,22 +372,22 @@ class Social_login_pro_mcp {
                 $template_data = $this->EE->lang->line($tmpl.'_tmpl');
                 $template_id = '';
             }
-            $vars['data'][$tmpl] = array(	
+            $vars['data'][$tmpl] = array(
                 'template_data'	=> form_textarea($tmpl, $template_data).form_hidden("id[$tmpl]", $template_id),
                 'enable_template'	=> form_checkbox("enable[$tmpl]", 'y', ($enable_template=='y')?true:false).' '.lang('enable_template')
         		);
         }
-        
+
     	return $this->EE->load->view('templates', $vars, TRUE);
-	
+
     }
-    
-    
+
+
 
     function save_templates()
     {
     	$site_id = $this->EE->config->item('site_id');
-   
+
         $tmpls = array('entry_submission_absolute_end', 'insert_comment_end', 'forum_submit_post_end', 'member_member_register');
 
         if (!empty($_POST))
@@ -414,20 +407,20 @@ class Social_login_pro_mcp {
                     $data['template_name'] = $tmpl;
                     $this->EE->db->insert('social_login_templates', $data);
                 }
-                
+
             }
         }
-        
+
         $this->EE->session->set_flashdata('message_success', $this->EE->lang->line('updated'));
-        
+
         $this->EE->functions->redirect(BASE.AMP.'C=addons_modules'.AMP.'M=show_module_cp'.AMP.'module=social_login_pro'.AMP.'method=templates');
-	
+
     }
 
 
-    
-   
-    
+
+
+
 
 }
 /* END */
